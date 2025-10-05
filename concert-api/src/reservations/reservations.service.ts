@@ -14,37 +14,24 @@ export class ReservationsService {
   findAll() {
     return this.prisma.reservation.findMany({
       orderBy: { id: 'desc' },
-      include: { user: true, concert: true },
-    });
-  }
-
-  // History of user
-  findByUser(userId: string) {
-    return this.prisma.reservation.findMany({
-      where: { userId },
-      orderBy: { id: 'desc' },
       include: { concert: true },
     });
   }
 
   // Reserve
   async reserve(createReservationDto: CreateReservationDto) {
-    const { userId, concertId } = createReservationDto;
-
     return this.prisma.$transaction(async (tx) => {
-      // unique [userId, concertId] protect duplicate reservation
-      const existingReservation = await tx.reservation.findUnique({
-        where: { userId_concertId: { userId, concertId } },
+      const concert = await tx.concert.findUnique({
+        where: { id: createReservationDto.concertId },
       });
-      if (existingReservation)
-        throw new BadRequestException('Already reserved by this user');
-
-      const concert = await tx.concert.findUnique({ where: { id: concertId } });
       if (!concert) throw new NotFoundException('Concert not found');
 
       // Check available seats
       const reservedCount = await tx.reservation.count({
-        where: { concertId, status: 'RESERVED' },
+        where: {
+          concertId: createReservationDto.concertId,
+          status: 'RESERVED',
+        },
       });
       if (reservedCount >= concert.totalSeats) {
         throw new BadRequestException('No seat available');
@@ -53,8 +40,7 @@ export class ReservationsService {
       // Create reservation
       const reservation = await tx.reservation.create({
         data: {
-          userId,
-          concertId,
+          concertId: createReservationDto.concertId,
           status: 'RESERVED',
         },
       });
@@ -63,18 +49,17 @@ export class ReservationsService {
     });
   }
 
-  // cancel user+concert
+  // cancel reservation
   async cancel(cancelReservationDto: CancelReservationDto) {
-    const { userId, concertId } = cancelReservationDto;
     const current = await this.prisma.reservation.findUnique({
-      where: { userId_concertId: { userId, concertId } },
+      where: { id: cancelReservationDto.concertId },
     });
     if (!current) throw new NotFoundException('Reservation not found');
 
     if (current.status === 'CANCELLED') return current;
 
     return this.prisma.reservation.update({
-      where: { userId_concertId: { userId, concertId } },
+      where: { id: cancelReservationDto.concertId },
       data: { status: 'CANCELLED' },
     });
   }

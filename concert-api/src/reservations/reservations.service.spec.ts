@@ -12,7 +12,6 @@ describe('ReservationsService', () => {
 
   const mockReservation = {
     id: '1',
-    userId: 'user1',
     concertId: 'concert1',
     status: 'RESERVED',
     createdAt: new Date(),
@@ -27,12 +26,10 @@ describe('ReservationsService', () => {
   };
 
   const mockCreateReservationDto = {
-    userId: 'user1',
     concertId: 'concert1',
   };
 
   const mockCancelReservationDto = {
-    userId: 'user1',
     concertId: 'concert1',
   };
 
@@ -78,24 +75,6 @@ describe('ReservationsService', () => {
 
       expect(prismaService.reservation.findMany).toHaveBeenCalledWith({
         orderBy: { id: 'desc' },
-        include: { user: true, concert: true },
-      });
-      expect(result).toEqual(mockReservations);
-    });
-  });
-
-  describe('findByUser', () => {
-    it('should return reservations for a specific user', async () => {
-      const mockReservations = [mockReservation];
-      jest
-        .spyOn(prismaService.reservation, 'findMany')
-        .mockResolvedValue(mockReservations as Reservation[]);
-
-      const result = await service.findByUser('user1');
-
-      expect(prismaService.reservation.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user1' },
-        orderBy: { id: 'desc' },
         include: { concert: true },
       });
       expect(result).toEqual(mockReservations);
@@ -123,28 +102,6 @@ describe('ReservationsService', () => {
       const result = await service.reserve(mockCreateReservationDto);
 
       expect(result).toEqual(mockReservation);
-    });
-
-    it('should throw BadRequestException when user already reserved', async () => {
-      jest
-        .spyOn(prismaService, '$transaction')
-        .mockImplementation(async (callback) => {
-          const tx = {
-            reservation: {
-              findUnique: jest.fn().mockResolvedValue(mockReservation),
-              count: jest.fn(),
-              create: jest.fn(),
-            },
-            concert: {
-              findUnique: jest.fn(),
-            },
-          };
-          return callback(tx as any);
-        });
-
-      await expect(service.reserve(mockCreateReservationDto)).rejects.toThrow(
-        BadRequestException,
-      );
     });
 
     it('should throw NotFoundException when concert not found', async () => {
@@ -205,10 +162,10 @@ describe('ReservationsService', () => {
       const result = await service.cancel(mockCancelReservationDto);
 
       expect(prismaService.reservation.findUnique).toHaveBeenCalledWith({
-        where: { userId_concertId: { userId: 'user1', concertId: 'concert1' } },
+        where: { id: 'concert1' },
       });
       expect(prismaService.reservation.update).toHaveBeenCalledWith({
-        where: { userId_concertId: { userId: 'user1', concertId: 'concert1' } },
+        where: { id: 'concert1' },
         data: { status: 'CANCELLED' },
       });
       expect(result).toEqual(cancelledReservation);
