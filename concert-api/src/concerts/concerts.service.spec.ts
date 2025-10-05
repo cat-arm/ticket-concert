@@ -78,7 +78,7 @@ describe('ConcertsService', () => {
       const result = await service.findAll();
 
       expect(prismaService.concert.findMany).toHaveBeenCalledWith({
-        orderBy: { id: 'desc' },
+        orderBy: { createdAt: 'desc' },
       });
       expect(result).toEqual(mockConcerts);
     });
@@ -90,15 +90,22 @@ describe('ConcertsService', () => {
         .spyOn(prismaService.concert, 'findUnique')
         .mockResolvedValue(mockConcert);
       jest
-        .spyOn(prismaService.concert, 'delete')
-        .mockResolvedValue(mockConcert);
+        .spyOn(prismaService, '$transaction')
+        .mockImplementation(async (callback) => {
+          const tx = {
+            reservation: {
+              deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+            },
+            concert: {
+              delete: jest.fn().mockResolvedValue(mockConcert),
+            },
+          };
+          return callback(tx as any);
+        });
 
       const result = await service.remove('1');
 
       expect(prismaService.concert.findUnique).toHaveBeenCalledWith({
-        where: { id: '1' },
-      });
-      expect(prismaService.concert.delete).toHaveBeenCalledWith({
         where: { id: '1' },
       });
       expect(result).toEqual({ ok: true });

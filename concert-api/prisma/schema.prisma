@@ -34,7 +34,7 @@ model Reservation {
   concertId  String
   status     ReservationStatus  @default(RESERVED)
   createdAt  DateTime           @default(now())
-  concert    Concert  @relation(fields: [concertId], references: [id])
+  concert    Concert  @relation(fields: [concertId], references: [id], onDelete: Cascade)
   // limit 1 session for 1 ticket of type of concert for 1 reservation
   @@unique([sessionId, concertId], name: "sessionId_concertId")
 }

@@ -77,7 +77,8 @@ describe('ReservationsService', () => {
       const result = await service.findAll();
 
       expect(prismaService.reservation.findMany).toHaveBeenCalledWith({
-        orderBy: { id: 'desc' },
+        include: { concert: true },
+        orderBy: { createdAt: 'desc' },
       });
       expect(result).toEqual(mockReservations);
     });
@@ -131,7 +132,31 @@ describe('ReservationsService', () => {
         .mockImplementation(async (callback) => {
           const tx = {
             reservation: {
-              findUnique: jest.fn().mockResolvedValue(mockReservation),
+              findUnique: jest.fn().mockResolvedValue(mockReservation), // status: 'RESERVED'
+              count: jest.fn(),
+              create: jest.fn(),
+            },
+            concert: {
+              findUnique: jest.fn(),
+            },
+          };
+          return callback(tx as any);
+        });
+
+      await expect(service.reserve(mockCreateReservationDto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw BadRequestException when user already has any reservation', async () => {
+      const cancelledReservation = { ...mockReservation, status: 'CANCELLED' };
+
+      jest
+        .spyOn(prismaService, '$transaction')
+        .mockImplementation(async (callback) => {
+          const tx = {
+            reservation: {
+              findUnique: jest.fn().mockResolvedValue(cancelledReservation), // status: 'CANCELLED'
               count: jest.fn(),
               create: jest.fn(),
             },

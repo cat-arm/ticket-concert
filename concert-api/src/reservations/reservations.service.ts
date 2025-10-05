@@ -13,7 +13,8 @@ export class ReservationsService {
 
   findAll() {
     return this.prisma.reservation.findMany({
-      orderBy: { id: 'desc' },
+      include: { concert: true },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

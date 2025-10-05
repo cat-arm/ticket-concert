@@ -12,13 +12,22 @@ export class ConcertsService {
   }
 
   findAll() {
-    return this.prisma.concert.findMany({ orderBy: { id: 'desc' } });
+    return this.prisma.concert.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
   async remove(id: string) {
     const exists = await this.prisma.concert.findUnique({ where: { id } });
     if (!exists) throw new NotFoundException('Concert not found');
-    await this.prisma.concert.delete({ where: { id } });
+
+    // Use transaction to ensure data consistency
+    await this.prisma.$transaction(async (tx) => {
+      // Delete all related reservations first
+      await tx.reservation.deleteMany({ where: { concertId: id } });
+
+      // Then delete the concert
+      await tx.concert.delete({ where: { id } });
+    });
+
     return { ok: true };
   }
 
