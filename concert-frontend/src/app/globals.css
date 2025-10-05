@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@layer components {
+  .card {
+    @apply bg-white rounded-lg shadow-lg p-5;
+  }
+
+  .stat {
+    @apply rounded-lg p-5 text-white font-semibold;
+  }
+
+  .tabbar {
+    @apply flex border-b mb-4 gap-6;
+  }
+
+  .tab {
+    @apply pb-2 border-b-2 border-transparent cursor-pointer hover:border-blue-500/70;
+  }
+
+  .tab-active {
+    @apply border-blue-500 text-blue-500 font-medium;
+  }
+}
